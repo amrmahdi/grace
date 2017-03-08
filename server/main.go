@@ -35,14 +35,14 @@ func (gds *GraceDemoServer) Sleep(ctx context.Context, req *grace.SleepRequest) 
 	return
 }
 
-func (gds *GraceDemoServer) handleSignals() {
+func (gds *GraceDemoServer) handleSignals(stopping, finished chan bool) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP)
 	_ = <-c
 	fmt.Println("Shutting down gracefully...")
+	stopping <- true
 	gds.gs.GracefulStop()
-	fmt.Println("Exiting")
-	os.Exit(0)
+	finished <- true
 }
 
 // Run runs the server.
@@ -57,11 +57,20 @@ func (gds *GraceDemoServer) Run() {
 
 	grace.RegisterDemoServer(gds.gs, gds)
 
-	go gds.handleSignals()
+	stopping := make(chan bool, 1)
+	finished := make(chan bool)
+	go gds.handleSignals(stopping, finished)
 
-	if err = gds.gs.Serve(lis); err != nil {
-		fmt.Println("Error: ", err.Error())
+	err = gds.gs.Serve(lis)
+
+	select {
+	case _ = <-stopping:
+		_ = <-finished
+	default:
+		fmt.Println("Error serving: ", err.Error())
 	}
+
+	fmt.Println("Done")
 }
 
 func main() {
