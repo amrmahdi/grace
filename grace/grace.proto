@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package grace;
+
+service Demo {
+  rpc Sleep(SleepRequest) returns (SleepResponse);
+}
+
+message SleepRequest {
+  uint64 duration = 1;
+}
+
+message SleepResponse {
+  bool ok = 1;
+}
