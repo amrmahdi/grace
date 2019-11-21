@@ -17,6 +17,13 @@ func main() {
 	}
 	defer conn.Close()
 
+	go func() {
+		for {
+			fmt.Printf("conn-state: %v\n", conn.GetState())
+			conn.WaitForStateChange(context.Background(), conn.GetState())
+		}
+	}()
+
 	c := grace.NewDemoClient(conn)
 
 	resp, err := c.Sleep(context.Background(), &grace.SleepRequest{Duration: uint64(time.Minute)})
